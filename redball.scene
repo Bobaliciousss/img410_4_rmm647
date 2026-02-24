@@ -1,0 +1,5 @@
+img410scene
+camera width: 2 height: 2;
+sphere c_diff: 1 0 0 position: 0 -1 -5 radius: 2;
+plane c_diff: 0 1 0 position: 0 -1 0 normal: 0 1 0;
+end

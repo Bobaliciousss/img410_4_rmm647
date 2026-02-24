@@ -23,6 +23,7 @@ struct shape {
 
     float *position;
     float *cDiff;
+    float *cSpec;
 
     virtual ~shape() {}
 
@@ -112,7 +113,20 @@ struct plane : shape {
 
 };
 
-int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numberOfShapes ) {
+struct light {
+
+    float *position;
+    float *color;
+    float radialAtt0;
+    float radialAtt1;
+    float radialAtt2;
+    float theta;
+    float angularAtt0;
+    float *direction;
+
+};
+
+int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numberOfShapes, light ***lights, int *numberOfLights ) {
 
     printf("\nReading %s\n\n", sceneFileName);
 
@@ -145,6 +159,9 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
         else if ( tempObjString == "plane" ) {
             objectsTableIndex ++;
             ( *objects )[ objectsTableIndex ] = new plane;
+        }
+        else if ( tempObjString == "light" ) {
+
         }
 
         int c = fgetc( stream ); // Primer
@@ -230,6 +247,7 @@ int main(int argc, char *argv[])
 
         int maxShapes = 128;
         shape **objects = new shape*[ maxShapes ];
+        
         int numberOfShapes;
         camera camera;
 

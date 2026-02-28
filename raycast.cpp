@@ -149,6 +149,7 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
     assert( fscanf( stream, "%s ", tempObject ) == 1 ); // Primer
     tempObjString = tempObject;
     int objectsTableIndex = -1; // Start at -1 since it increments when a new one is read
+    int lightsTableIndex = -1; // Start at -1 since it increments when a new one is read
 
     while ( tempObjString != endOfScene ) {
 
@@ -161,7 +162,8 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
             ( *objects )[ objectsTableIndex ] = new plane;
         }
         else if ( tempObjString == "light" ) {
-
+            lightsTableIndex ++;
+            ( *lights )[ lightsTableIndex ] = new light;
         }
 
         int c = fgetc( stream ); // Primer
@@ -191,7 +193,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
 
                 float *position = new float[3];
                 fscanf( stream, "%f %f %f", &( position[0] ), &( position[1] ), &( position[2] ) );
-                ( *objects )[ objectsTableIndex ]->position = position;
+                
+                if ( tempObjString == "light" )
+                    ( *lights )[ lightsTableIndex ]->position = position;
+                else
+                    ( *objects )[ objectsTableIndex ]->position = position;
 
             }
             else if ( tempPropString == "radius:" ) {
@@ -214,6 +220,62 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                 float *cDiff = new float[3];
                 fscanf( stream, "%f %f %f", &( cDiff[0] ), &( cDiff[1] ), &( cDiff[2] ) );
                 ( *objects )[ objectsTableIndex ]->cDiff = cDiff;
+
+            }
+            else if ( tempPropString == "c_spec:" ) {
+
+                float *cSpec = new float[3];
+                fscanf( stream, "%f %f %f", &( cSpec[0] ), &( cSpec[1] ), &( cSpec[2] ) );
+                ( *objects )[ objectsTableIndex ]->cSpec = cSpec;
+
+            }
+            else if ( tempPropString == "color:" ) {
+
+                float color;
+                fscanf( stream, "%f", &color );
+                ( *lights )[ lightsTableIndex ]->color;
+
+            }
+            else if ( tempPropString == "radial_a0:" ) {
+
+                float radial_a0;
+                fscanf( stream, "%f", &radial_a0 );
+                ( *lights )[ lightsTableIndex ]->radialAtt0;
+
+            }
+            else if ( tempPropString == "radial_a1:" ) {
+
+                float radial_a1;
+                fscanf( stream, "%f", &radial_a1 );
+                ( *lights )[ lightsTableIndex ]->radialAtt1;
+
+            }
+            else if ( tempPropString == "radial_a2:" ) {
+
+                float radial_a2;
+                fscanf( stream, "%f", &radial_a2 );
+                ( *lights )[ lightsTableIndex ]->radialAtt2;
+
+            }
+            else if ( tempPropString == "theta:" ) {
+
+                float theta;
+                fscanf( stream, "%f", &theta );
+                ( *lights )[ lightsTableIndex ]->theta;
+
+            }
+            else if ( tempPropString == "angular_a0:" ) {
+
+                float angular_a0;
+                fscanf( stream, "%f", &angular_a0 );
+                ( *lights )[ lightsTableIndex ]->angularAtt0;
+
+            }
+            else if ( tempPropString == "direction:" ) {
+
+                float *direction = new float[3];
+                fscanf( stream, "%f %f %f", &( direction[0] ), &( direction[1] ), &( direction[2] ) );
+                ( *lights )[ lightsTableIndex ]->direction = direction;
 
             }
 

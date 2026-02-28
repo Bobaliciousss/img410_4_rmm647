@@ -2,5 +2,5 @@ img410scene
 camera width: 2 height: 2;
 sphere c_diff: 1 0 0 c_spec: 1 1 1 position: 0 1 -5 radius: 2;
 plane c_diff: 0 1 0 position: 0 -1 0 normal: 0 1 0;
-light color: 2 2 2 radial_a2: 0.125 radial_a1: 0.125 radial_a0: 0.125 position: 1 3 -1
+light color: 2 2 2 radial_a2: 0.125 radial_a1: 0.125 radial_a0: 0.125 position: 1 3 -1;
 end

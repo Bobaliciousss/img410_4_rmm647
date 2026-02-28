@@ -25,7 +25,11 @@ struct shape {
     float *cDiff;
     float *cSpec;
 
-    virtual ~shape() {}
+    virtual ~shape() {
+        delete[] position;
+        delete[] cDiff;
+        delete[] cSpec;
+    }
 
     // float *rayOrigin, float *rayDirection
     virtual float intersect( float *R_o, float *R_d ) {
@@ -92,6 +96,10 @@ struct plane : shape {
 
     float *normal;
 
+    ~plane() override {
+        delete[] normal;
+    }
+
     float intersect( float *R_o, float *R_d ) {
         
         float magnitude = v3_length( this->position );
@@ -145,6 +153,7 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
     char tempObject[10];
     std::string tempObjString = tempObject;
     std::string endOfScene = "end";
+    std::cout << endOfScene;
 
     assert( fscanf( stream, "%s ", tempObject ) == 1 ); // Primer
     tempObjString = tempObject;
@@ -170,14 +179,16 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
         char tempProperty[10];
         std::string tempPropString = tempProperty;
 
-        while ( c != '\n' )
+        while ( c != '\n' && c != EOF )
         {
             
             ungetc( c, stream );
             
             int tempInnerResult = fscanf( stream, "%s", tempProperty );
-            assert( tempInnerResult > 0 && tempInnerResult < 5 );
+            assert( tempInnerResult > 0 );
             tempPropString = tempProperty;
+
+            std::cout << "Scanned " << tempPropString << " for " << tempObjString << "\n";
 
             if ( tempPropString == "height:" ) {
 
@@ -231,44 +242,42 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
             }
             else if ( tempPropString == "color:" ) {
 
-                float color;
-                fscanf( stream, "%f", &color );
-                ( *lights )[ lightsTableIndex ]->color;
+                float *color = new float[3];
+                fscanf( stream, "%f %f %f", &( color[0] ), &( color[1] ), &( color[2] ) );
+                ( *lights )[ lightsTableIndex ]->color = color;
 
             }
             else if ( tempPropString == "radial_a0:" ) {
 
                 float radial_a0;
                 fscanf( stream, "%f", &radial_a0 );
-                ( *lights )[ lightsTableIndex ]->radialAtt0;
+                ( *lights )[ lightsTableIndex ]->radialAtt0 = radial_a0;
 
             }
             else if ( tempPropString == "radial_a1:" ) {
 
                 float radial_a1;
                 fscanf( stream, "%f", &radial_a1 );
-                ( *lights )[ lightsTableIndex ]->radialAtt1;
+                ( *lights )[ lightsTableIndex ]->radialAtt1 = radial_a1;
 
             }
             else if ( tempPropString == "radial_a2:" ) {
 
                 float radial_a2;
                 fscanf( stream, "%f", &radial_a2 );
-                ( *lights )[ lightsTableIndex ]->radialAtt2;
+                ( *lights )[ lightsTableIndex ]->radialAtt2 = radial_a2;
 
             }
             else if ( tempPropString == "theta:" ) {
 
-                float theta;
-                fscanf( stream, "%f", &theta );
-                ( *lights )[ lightsTableIndex ]->theta;
+                fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->theta );
 
             }
             else if ( tempPropString == "angular_a0:" ) {
 
                 float angular_a0;
                 fscanf( stream, "%f", &angular_a0 );
-                ( *lights )[ lightsTableIndex ]->angularAtt0;
+                ( *lights )[ lightsTableIndex ]->angularAtt0 = angular_a0;
 
             }
             else if ( tempPropString == "direction:" ) {
@@ -283,14 +292,21 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
 
         }
 
-        assert( fscanf( stream, "%s ", tempObject ) == 1 );
+        if ( fscanf( stream, "%s ", tempObject ) != 1 )
+            break;
+
         tempObjString = tempObject;
+        std::cout << "Got object string: " << tempObjString << "\n";
+
+        if ( tempObjString == endOfScene )
+            break;
         
     }
 
     fclose( stream );
 
     *numberOfShapes = ( objectsTableIndex + 1 );
+    *numberOfLights = ( lightsTableIndex + 1 );
 
     return 0;
 
@@ -309,11 +325,15 @@ int main(int argc, char *argv[])
 
         int maxShapes = 128;
         shape **objects = new shape*[ maxShapes ];
+
+        int maxLights = 128;
+        light **lights = new light*[ maxLights ];
         
         int numberOfShapes;
+        int numberOfLights;
         camera camera;
 
-        if ( readScene( argv[3], &objects, &camera, &numberOfShapes ) == 1 ) {
+        if ( readScene( argv[3], &objects, &camera, &numberOfShapes, &lights, &numberOfLights ) == 1 ) {
             return 1; // Invalid file format
         }
         else {
@@ -342,22 +362,7 @@ int main(int argc, char *argv[])
                         std::string objectType = objects[ index ]->getShapeType();
                         float intersectedT;
 
-                        if ( objectType == "Sphere" ) {
-
-                            intersectedT = objects[ index ]->intersect( R_o, R_d );
-
-                        }
-                        else if ( objectType == "Plane" ) {
-
-                            intersectedT = objects[ index ]->intersect( R_o, R_d );
-
-                        }
-                        else {
-
-                            std::cerr << "Error: Intersection called for invalid object.";
-                            return 1;
-
-                        }
+                        intersectedT = objects[ index ]->intersect( R_o, R_d );
 
                         if ( intersectedT < closestT ) {
 
@@ -399,7 +404,13 @@ int main(int argc, char *argv[])
         // Deallocate
         for ( int index=0; index<numberOfShapes; index++ )
             delete objects[ index ];
+
         delete[] objects;
+
+        for ( int index=0; index<numberOfLights; index++ )
+            delete lights[ index ];
+
+        delete[] lights;
 
     }
 

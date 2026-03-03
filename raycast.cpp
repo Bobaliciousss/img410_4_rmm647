@@ -25,6 +25,12 @@ struct shape {
     float *cDiff;
     float *cSpec;
 
+    shape() {
+        position = new float[3]{ 0.f, 0.f, 0.f };
+        cDiff = new float[3]{ 0.f, 0.f, 0.f };
+        cSpec = new float[3]{ 0.f, 0.f, 0.f };
+    }
+
     virtual ~shape() {
         delete[] position;
         delete[] cDiff;
@@ -52,6 +58,10 @@ struct shape {
 struct sphere : shape {
 
     float radius;
+
+    sphere() {
+        radius = 0.f;
+    }
 
     float intersect( float *R_o, float *R_d ) {
 
@@ -96,6 +106,10 @@ struct plane : shape {
 
     float *normal;
 
+    plane() {
+        normal = new float[3]{ 0.f, 0.f, 0.f };
+    }
+
     ~plane() override {
         delete[] normal;
     }
@@ -103,9 +117,8 @@ struct plane : shape {
     float intersect( float *R_o, float *R_d ) {
         
         float magnitude = v3_length( this->position );
-        float t = ( this->normal[0] * R_o[0] + this->normal[1] * R_o[1] + this->normal[2] * R_o[2] + magnitude ) 
+        float t = -1.f * ( this->normal[0] * R_o[0] + this->normal[1] * R_o[1] + this->normal[2] * R_o[2] + magnitude ) 
                 / ( this->normal[0] * R_d[0] + this->normal[1] * R_d[1] + this->normal[2] * R_d[2] );
-
         if ( t >= 0 ) 
             return t; 
 
@@ -125,12 +138,32 @@ struct light {
 
     float *position;
     float *color;
+    float *direction;
     float radialAtt0;
     float radialAtt1;
     float radialAtt2;
     float theta;
     float angularAtt0;
-    float *direction;
+    
+    light() {
+
+        position = new float[3]{ 0.f, 0.f, 0.f };
+        color = new float[3]{ 0.f, 0.f, 0.f };
+        direction = new float[3]{ 0.f, 0.f, 0.f };
+
+        radialAtt0 = 0.f;
+        radialAtt1 = 0.f;
+        radialAtt2 = 0.f;
+        theta = 0.f;
+        angularAtt0 = 0.f;
+
+    }
+
+    ~light() {
+        delete[] position;
+        delete[] color;
+        delete[] direction;
+    }
 
 };
 
@@ -324,10 +357,10 @@ int main(int argc, char *argv[])
     else {
 
         int maxShapes = 128;
-        shape **objects = new shape*[ maxShapes ];
+        shape **objects = new shape*[ maxShapes ]();
 
         int maxLights = 128;
-        light **lights = new light*[ maxLights ];
+        light **lights = new light*[ maxLights ]();
         
         int numberOfShapes;
         int numberOfLights;
@@ -339,8 +372,8 @@ int main(int argc, char *argv[])
         else {
 
             assert( numberOfShapes > 0 );
-            int imgWidth = std::stof(argv[1] );
-            int imgHeight = std::stof( argv[2] );
+            int imgWidth = std::stoi(argv[1] );
+            int imgHeight = std::stoi( argv[2] );
             float R_o[3] = { 0, 0, 0 };
             uint8_t pixmap[ imgHeight * imgWidth * 3 ];
 
@@ -375,7 +408,8 @@ int main(int argc, char *argv[])
                     }
 
                     uint8_t outputRGB[3] = { 0, 0, 0 };
-                    int pixmapIndex = ( imgY * imgWidth * 3 + imgX * 3 );
+                    int flippedY = imgHeight - 1 - imgY;
+                    int pixmapIndex = ( flippedY * imgWidth * 3 + imgX * 3 );
 
                     if ( closestObjectIndex > -1 ) {
                         

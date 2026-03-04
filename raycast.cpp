@@ -13,10 +13,23 @@ extern "C" {
 
 bool verbose = false; // Set to true to print debug statements
 
+float clamp( float value, float minimum, float maximum ) {
+    if ( value < minimum )
+        return minimum;
+    else if ( value > maximum )
+        return maximum;
+    return value;
+}
+
 struct camera {
 
     float width;
     float height;
+
+    camera() {
+        width = 0.f;
+        height = 0.f;
+    }
 
 };
 
@@ -42,7 +55,7 @@ struct shape {
     // float *rayOrigin, float *rayDirection
     virtual float intersect( float *R_o, float *R_d ) {
         std::cerr << "Error: Cannot call intersect of base class \'Shape.\'\n";
-        return 0.0f;
+        return 0.f;
     }
     virtual std::string getShapeType() {
         std::string shapeType = "Base";
@@ -155,6 +168,7 @@ struct light {
     float radialAtt1;
     float radialAtt2;
     float theta;
+    float cosineTheta;
     float angularAtt0;
     
     light() {
@@ -167,6 +181,7 @@ struct light {
         radialAtt1 = 0.f;
         radialAtt2 = 0.f;
         theta = 0.f;
+        cosineTheta = 0.f;
         angularAtt0 = 0.f;
 
     }
@@ -377,9 +392,14 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
             else if ( tempPropString == "theta:" ) {
 
                 fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->theta );
+                ( *lights )[ lightsTableIndex ]->cosineTheta = ( float )cos( ( *lights )[ lightsTableIndex ]->theta * ( M_PI/ 180.f ) );
 
-                if ( verbose == true ) 
+                if ( verbose == true ) {
+
                     std::cout << ( *lights )[ lightsTableIndex ]->theta << std::endl;
+                    std::cout << "Calculated cosine theta: " << ( *lights )[ lightsTableIndex ]->cosineTheta << std::endl;
+
+                }
 
             }
             else if ( tempPropString == "angular_a0:" ) {
@@ -495,23 +515,19 @@ int main(int argc, char *argv[])
                     }
 
                     uint8_t outputRGB[3] = { 0, 0, 0 };
-                    int flippedY = imgHeight - 1 - imgY;
-                    int pixmapIndex = ( flippedY * imgWidth * 3 + imgX * 3 );
-
-                    if ( closestObjectIndex > -1 ) {
-                        
-                        outputRGB[0] = objects[ closestObjectIndex ]->cDiff[0] * 255;
-                        outputRGB[1] = objects[ closestObjectIndex ]->cDiff[1] * 255;
-                        outputRGB[2] = objects[ closestObjectIndex ]->cDiff[2] * 255;
-
-                    }
+                    float I[3] = { 0, 0, 0 };
+                    bool inShadow;
 
                     for ( int lightIndex=0; lightIndex<numberOfLights; lightIndex++ ) {
+
+                        inShadow = false;
 
                         if ( closestT == std::numeric_limits<float>::infinity() ) {
 
                             if ( verbose == true )
                                 std::cout << "No intersecton, in shadow." << std::endl;
+                            
+                            inShadow = true;
 
                         }
                         else {
@@ -524,8 +540,6 @@ int main(int argc, char *argv[])
                             L_o[1] = R_o[1] + R_d[1] * ( closestT );
                             L_o[2] = R_o[2] + R_d[2] * ( closestT );
 
-                            
-
                             float fromIntersectionToLight[3] = { 0, 0, 0 };
                             v3_from_points( fromIntersectionToLight, L_o, lights[ lightIndex ]->position );
                             float L_d[3] = { 0, 0, 0 };
@@ -533,7 +547,7 @@ int main(int argc, char *argv[])
                             float toLightMagnitude = v3_length( fromIntersectionToLight );
 
                             float intersectedT = std::numeric_limits<float>::infinity();
-                            bool inShadow = false;
+                            
 
                             for ( int objectIndex=0; objectIndex<numberOfShapes; objectIndex++ ) {
 
@@ -566,31 +580,128 @@ int main(int argc, char *argv[])
 
                             if ( inShadow == false ) {
 
-                                if ( verbose == true )
+                                float foundNormal[3] = { 0, 0, 0 };
+
+                                if ( objects[ closestObjectIndex ]->getShapeType() == "Plane" ) {
+
+                                    objects[ closestObjectIndex ]->getNormal( foundNormal );
+
+                                }
+                                else if (  objects[ closestObjectIndex ]->getShapeType() == "Sphere"  ) {
+
+                                    foundNormal[0] = L_o[0] - objects[ closestObjectIndex ]->position[0];
+                                    foundNormal[1] = L_o[1] - objects[ closestObjectIndex ]->position[1];
+                                    foundNormal[2] = L_o[2] - objects[ closestObjectIndex ]->position[2];
+
+                                }
+                                else {
+                                    std::cerr << "Error: Cannot get reflection normal for invalid shape.";
+                                    return -1;
+                                }
+
+                                float normal[3] = { 0, 0, 0 };
+                                v3_normalize( normal, foundNormal );
+
+                                float O_spec[3] = { 0, 0, 0 };
+                                O_spec[0] = objects[ closestObjectIndex ]->cSpec[0];
+                                O_spec[1] = objects[ closestObjectIndex ]->cSpec[1];
+                                O_spec[2] = objects[ closestObjectIndex ]->cSpec[2];
+
+                                float O_diff[3] = { 0, 0, 0 };
+                                O_diff[0] = objects[ closestObjectIndex ]->cDiff[0];
+                                O_diff[1] = objects[ closestObjectIndex ]->cDiff[1];
+                                O_diff[2] = objects[ closestObjectIndex ]->cDiff[2];
+
+                                float reflection[3] = { 0, 0, 0 };
+                                float negLight[3] = { L_d[0], L_d[1], L_d[2] };
+                                v3_scale( negLight, -1 );
+                                v3_reflect( reflection, negLight, normal );
+
+                                float viewVector[3] = { R_d[0], R_d[1], R_d[2] };
+                                v3_scale( viewVector, -1 );
+                                
+                                float VdotR = v3_dot_product( viewVector, reflection );
+                                float I_spec[3] = { 0, 0, 0 };
+
+                                if ( VdotR > 0 ) {
+
+                                    I_spec[0] = O_spec[0] * lights[ lightIndex ]->color[0] * pow( VdotR, 20 );
+                                    I_spec[1] = O_spec[1] * lights[ lightIndex ]->color[1] * pow( VdotR, 20 );
+                                    I_spec[2] = O_spec[2] * lights[ lightIndex ]->color[2] * pow( VdotR, 20 );
+
+                                }
+
+                                float NdotL = v3_dot_product( normal, L_d );
+                                float I_diff[3] = { 0, 0, 0 };
+
+                                if ( NdotL > 0 ) {
+
+                                    I_diff[0] = O_diff[0] * lights[ lightIndex ]->color[0] * NdotL;
+                                    I_diff[1] = O_diff[1] * lights[ lightIndex ]->color[1] * NdotL;
+                                    I_diff[2] = O_diff[2] * lights[ lightIndex ]->color[2] * NdotL;
+
+                                }
+
+                                float f_rad = 1.f / ( lights[ lightIndex ]->radialAtt0 
+                                    + lights[ lightIndex ]->radialAtt1 * toLightMagnitude 
+                                    + lights[ lightIndex ]->radialAtt2 * toLightMagnitude * toLightMagnitude );
+
+                                float V_o[3] = { L_d[0], L_d[1], L_d[2] };
+                                v3_scale( V_o, -1 );
+
+                                float normalizedDirection[3] = { 0, 0, 0 };
+                                v3_normalize( normalizedDirection, lights[ lightIndex ]->direction );
+                                float angDot = v3_dot_product( V_o, normalizedDirection );
+                                float f_ang;
+
+                                if ( lights[ lightIndex]->cosineTheta == 0 )
+                                    f_ang = 1.f;
+                                else if ( angDot >= lights[ lightIndex ]->cosineTheta )
+                                    f_ang = pow( ( angDot ), lights[ lightIndex ]->angularAtt0 );
+                                else
+                                    f_ang = 0.f;
+
+                                I[0] += f_rad * f_ang * ( I_spec[0] + I_diff[0] );
+                                I[1] += f_rad * f_ang * ( I_spec[1] + I_diff[1] );
+                                I[2] += f_rad * f_ang * ( I_spec[2] + I_diff[2] );
+
+                                if ( verbose == true ) {
+
                                     std::cout << "In light." << std::endl;
+                                    std::cout << "O_spec is: " << O_spec[0] << " "<< O_spec[1] << " " << O_spec[2] << std::endl;
+                                    std::cout << "O_diff is: " << O_diff[0] << " "<< O_diff[1] << " " << O_diff[2] << std::endl;
+                                    std::cout << "I_spec is: " << I_spec[0] << " "<< I_spec[1] << " " << I_spec[2] << std::endl;
+                                    std::cout << "I_diff is: " << I_diff[0] << " "<< I_diff[1] << " " << I_diff[2] << std::endl;
+                                    std::cout << "Radial Attenuation is: " << f_rad << std::endl;
+                                    std::cout << "Angular Attenuation is: " << f_ang << std::endl;
 
-                                
+                                }
                                 
                             }
-                            else {
-
-                                if ( verbose == true )
-                                    std::cout << "In shadow." << std::endl;
-
-                                // Make shadows black
-                                outputRGB[0] = 0;
-                                outputRGB[1] = 0;
-                                outputRGB[2] = 0;
-
-                            }
-
+                            else
+                                continue;
                             
 
                         }
 
                     }
 
-                    
+                    int flippedY = imgHeight - 1 - imgY;
+                    int pixmapIndex = ( flippedY * imgWidth * 3 + imgX * 3 );
+
+                        
+                    I[0] = clamp( I[0], 0, 1 );
+                    I[1] = clamp( I[1], 0, 1 );
+                    I[2] = clamp( I[2], 0, 1 );
+
+                    if ( verbose == true )
+                        std::cout << "Clamped RGB: " << I[0] << " " << I[1] << " " << I[2] << std::endl;
+
+                    outputRGB[0] = I[0] * 255;
+                    outputRGB[1] = I[1] * 255;
+                    outputRGB[2] = I[2] * 255;
+
+
 
                     pixmap[ pixmapIndex ] = outputRGB[0];
                     pixmap[ pixmapIndex + 1 ] = outputRGB[1];

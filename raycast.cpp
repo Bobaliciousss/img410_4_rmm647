@@ -49,8 +49,11 @@ struct shape {
     virtual void setRadius( float radius ) {
         std::cerr << "Error: Cannot assign radius to non-sphere class.\n";
     }
-    virtual void setNormal( float *normal ) {
+    virtual void setNormal( float *nml ) {
         std::cerr << "Error: Cannot assign normal to non-plane class.\n";
+    }
+    virtual void getNormal ( float *nml ) {
+        std::cerr << "Error: Cannot get normal from non-plane class.\n";
     }
 
 };
@@ -128,8 +131,15 @@ struct plane : shape {
         std::string shapeType = "Plane";
         return shapeType;
     }
-    void setNormal(  float *nml ) {
-        this->normal = nml;
+    void setNormal( float *nml ) {
+        normal[0] = nml[0];
+        normal[1] = nml[1];
+        normal[2] = nml[2];
+    }
+    void getNormal( float *nml ) {
+        nml[0] = normal[0];
+        nml[1] = normal[1];
+        nml[2] = normal[2];
     }
 
 };
@@ -175,7 +185,7 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
     assert( stream != NULL );
 
     char magicChars[12];
-    assert( fscanf( stream, "%s ", magicChars ) == 1 );
+    assert( fscanf( stream, "%11s ", magicChars ) == 1 );
     std::string sceneHeader = magicChars; // For comparison
     std::string identityHeader = "img410scene";
     if ( sceneHeader != identityHeader ) {
@@ -183,12 +193,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
         return 1;
     }
 
-    char tempObject[10];
+    char tempObject[32];
     std::string tempObjString = tempObject;
     std::string endOfScene = "end";
-    std::cout << endOfScene;
 
-    assert( fscanf( stream, "%s ", tempObject ) == 1 ); // Primer
+    assert( fscanf( stream, "%31s ", tempObject ) == 1 ); // Primer
     tempObjString = tempObject;
     int objectsTableIndex = -1; // Start at -1 since it increments when a new one is read
     int lightsTableIndex = -1; // Start at -1 since it increments when a new one is read
@@ -209,39 +218,60 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
         }
 
         int c = fgetc( stream ); // Primer
-        char tempProperty[10];
+        char tempProperty[64];
         std::string tempPropString = tempProperty;
 
         while ( c != '\n' && c != EOF )
         {
             
+            //std::cout << "Segfault Check: \"End\" == " << endOfScene << std::endl;
             ungetc( c, stream );
             
-            int tempInnerResult = fscanf( stream, "%s", tempProperty );
+            int tempInnerResult = fscanf( stream, "%31s", tempProperty );
             assert( tempInnerResult > 0 );
             tempPropString = tempProperty;
 
-            std::cout << "Scanned " << tempPropString << " for " << tempObjString << "\n";
+            std::cout << "Scanned " << tempPropString << " for " << tempObjString << ": ";
 
             if ( tempPropString == "height:" ) {
 
                 assert( fscanf( stream, "%f", &( camera->height ) ) == 1 );
+
+                std::cout << camera->height << std::endl;
 
             }
             else if ( tempPropString == "width:" ) {
 
                 assert( fscanf( stream, "%f", &( camera->width ) ) == 1 );
 
+                std::cout << camera->width << std::endl;
+
             }
             else if ( tempPropString == "position:" ) {
-
-                float *position = new float[3];
-                fscanf( stream, "%f %f %f", &( position[0] ), &( position[1] ), &( position[2] ) );
                 
-                if ( tempObjString == "light" )
-                    ( *lights )[ lightsTableIndex ]->position = position;
-                else
-                    ( *objects )[ objectsTableIndex ]->position = position;
+                if ( tempObjString == "light" ) {
+
+                    fscanf(stream, "%f %f %f",
+                        &( *lights )[ lightsTableIndex ]->position[0],
+                        &( *lights )[ lightsTableIndex ]->position[1],
+                        &( *lights )[ lightsTableIndex ]->position[2] );
+
+                    std::cout << ( *lights )[ lightsTableIndex ]->position[0] << " " 
+                            << ( *lights )[ lightsTableIndex ]->position[1] << " " 
+                            << ( *lights )[ lightsTableIndex ]->position[2] << std::endl;
+                }
+                else {
+
+                    fscanf(stream, "%f %f %f",
+                        &( *objects )[ objectsTableIndex ]->position[0],
+                        &( *objects )[ objectsTableIndex ]->position[1],
+                        &( *objects )[ objectsTableIndex ]->position[2] );
+
+                    std::cout << ( *objects )[ objectsTableIndex ]->position[0] << " " 
+                            << ( *objects )[ objectsTableIndex ]->position[1] << " " 
+                            << ( *objects )[ objectsTableIndex ]->position[2] << std::endl;
+
+                }
 
             }
             else if ( tempPropString == "radius:" ) {
@@ -249,75 +279,105 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                 float radius;
                 fscanf( stream, "%f", &radius );
                 ( *objects )[ objectsTableIndex ]->setRadius( radius );
+
+                std::cout << radius << std::endl;
                 
             }
             else if ( tempPropString == "normal:" ) {
 
-                float *normal = new float[3];
+                float normal[3] ;
                 fscanf( stream, "%f %f %f", &( normal[0] ), &( normal[1] ), &( normal[2] ) );
                 ( *objects )[ objectsTableIndex ]->setNormal( normal );
+
                 
+                float scannedNormal[3];
+                ( *objects )[ objectsTableIndex ]->getNormal( scannedNormal );
+                std::cout << scannedNormal[0] << " " 
+                        << scannedNormal[1] << " " 
+                        << scannedNormal[2] << std::endl;
 
             }
             else if ( tempPropString == "c_diff:" ) {
 
-                float *cDiff = new float[3];
-                fscanf( stream, "%f %f %f", &( cDiff[0] ), &( cDiff[1] ), &( cDiff[2] ) );
-                ( *objects )[ objectsTableIndex ]->cDiff = cDiff;
+                fscanf(stream, "%f %f %f",
+                    &( *objects )[ objectsTableIndex ]->cDiff[0],
+                    &( *objects )[ objectsTableIndex ]->cDiff[1],
+                    &( *objects )[ objectsTableIndex ]->cDiff[2] );
+
+                std::cout << ( *objects )[ objectsTableIndex ]->cDiff[0] << " " 
+                        << ( *objects )[ objectsTableIndex ]->cDiff[1] << " " 
+                        << ( *objects )[ objectsTableIndex ]->cDiff[2] << std::endl;
 
             }
             else if ( tempPropString == "c_spec:" ) {
 
-                float *cSpec = new float[3];
-                fscanf( stream, "%f %f %f", &( cSpec[0] ), &( cSpec[1] ), &( cSpec[2] ) );
-                ( *objects )[ objectsTableIndex ]->cSpec = cSpec;
+                fscanf(stream, "%f %f %f",
+                    &( *objects )[ objectsTableIndex ]->cSpec[0],
+                    &( *objects )[ objectsTableIndex ]->cSpec[1],
+                    &( *objects )[ objectsTableIndex ]->cSpec[2] );
+
+                std::cout << ( *objects )[ objectsTableIndex ]->cSpec[0] << " " 
+                        << ( *objects )[ objectsTableIndex ]->cSpec[1] << " " 
+                        << ( *objects )[ objectsTableIndex ]->cSpec[2] << std::endl;
 
             }
             else if ( tempPropString == "color:" ) {
 
-                float *color = new float[3];
-                fscanf( stream, "%f %f %f", &( color[0] ), &( color[1] ), &( color[2] ) );
-                ( *lights )[ lightsTableIndex ]->color = color;
+                fscanf(stream, "%f %f %f",
+                    &( *lights )[ lightsTableIndex ]->color[0],
+                    &( *lights )[ lightsTableIndex ]->color[1],
+                    &( *lights )[ lightsTableIndex ]->color[2] );
+
+                std::cout << ( *lights )[ lightsTableIndex ]->color[0] << " " 
+                        << ( *lights )[ lightsTableIndex ]->color[1] << " " 
+                        << ( *lights )[ lightsTableIndex ]->color[2] << std::endl;
 
             }
             else if ( tempPropString == "radial_a0:" ) {
 
-                float radial_a0;
-                fscanf( stream, "%f", &radial_a0 );
-                ( *lights )[ lightsTableIndex ]->radialAtt0 = radial_a0;
+                fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->radialAtt0 );
+
+                std::cout << ( *lights )[ lightsTableIndex ]->radialAtt0 << std::endl;
 
             }
             else if ( tempPropString == "radial_a1:" ) {
 
-                float radial_a1;
-                fscanf( stream, "%f", &radial_a1 );
-                ( *lights )[ lightsTableIndex ]->radialAtt1 = radial_a1;
+                fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->radialAtt1 );
+
+                std::cout << ( *lights )[ lightsTableIndex ]->radialAtt1 << std::endl;
 
             }
             else if ( tempPropString == "radial_a2:" ) {
 
-                float radial_a2;
-                fscanf( stream, "%f", &radial_a2 );
-                ( *lights )[ lightsTableIndex ]->radialAtt2 = radial_a2;
+                fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->radialAtt2 );
+
+                std::cout << ( *lights )[ lightsTableIndex ]->radialAtt1 << std::endl;
 
             }
             else if ( tempPropString == "theta:" ) {
 
                 fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->theta );
 
+                std::cout << ( *lights )[ lightsTableIndex ]->theta << std::endl;
+
             }
             else if ( tempPropString == "angular_a0:" ) {
 
-                float angular_a0;
-                fscanf( stream, "%f", &angular_a0 );
-                ( *lights )[ lightsTableIndex ]->angularAtt0 = angular_a0;
+                fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->angularAtt0 );
+
+                std::cout << ( *lights )[ lightsTableIndex ]->angularAtt0 << std::endl;
 
             }
             else if ( tempPropString == "direction:" ) {
 
-                float *direction = new float[3];
-                fscanf( stream, "%f %f %f", &( direction[0] ), &( direction[1] ), &( direction[2] ) );
-                ( *lights )[ lightsTableIndex ]->direction = direction;
+                fscanf(stream, "%f %f %f",
+                    &( *lights )[ lightsTableIndex ]->direction[0],
+                    &( *lights )[ lightsTableIndex ]->direction[1],
+                    &( *lights )[ lightsTableIndex ]->direction[2] );
+
+                std::cout << ( *lights )[ lightsTableIndex ]->direction[0] << " " 
+                        << ( *lights )[ lightsTableIndex ]->direction[1] << " " 
+                        << ( *lights )[ lightsTableIndex ]->direction[2] << std::endl;
 
             }
 
@@ -325,11 +385,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
 
         }
 
-        if ( fscanf( stream, "%s ", tempObject ) != 1 )
+        if ( fscanf( stream, "%31s ", tempObject ) != 1 )
             break;
 
         tempObjString = tempObject;
-        std::cout << "Got object string: " << tempObjString << "\n";
+        std::cout << "\n\nGot object string: " << tempObjString << std::endl;
 
         if ( tempObjString == endOfScene )
             break;
@@ -375,7 +435,7 @@ int main(int argc, char *argv[])
             int imgWidth = std::stoi(argv[1] );
             int imgHeight = std::stoi( argv[2] );
             float R_o[3] = { 0, 0, 0 };
-            uint8_t pixmap[ imgHeight * imgWidth * 3 ];
+            uint8_t *pixmap = new uint8_t[ imgHeight * imgWidth * 3 ];
 
             for ( int imgY=0; imgY<imgHeight; imgY++ ) {
 
@@ -433,6 +493,8 @@ int main(int argc, char *argv[])
             metadata.maxColor = 255;
             writePPM( argv[4], pixmap, &metadata );
             
+            delete[] pixmap;
+
         }
 
         // Deallocate
@@ -445,6 +507,8 @@ int main(int argc, char *argv[])
             delete lights[ index ];
 
         delete[] lights;
+
+        
 
     }
 

@@ -11,6 +11,8 @@ extern "C" {
     #include "v3math.h"
 }
 
+bool verbose = false; // Set to true to print debug statements
+
 struct camera {
 
     float width;
@@ -223,7 +225,7 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
 
         while ( c != '\n' && c != EOF )
         {
-            
+
             //std::cout << "Segfault Check: \"End\" == " << endOfScene << std::endl;
             ungetc( c, stream );
             
@@ -231,20 +233,23 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
             assert( tempInnerResult > 0 );
             tempPropString = tempProperty;
 
-            std::cout << "Scanned " << tempPropString << " for " << tempObjString << ": ";
+            if ( verbose == true ) 
+                std::cout << "Scanned " << tempPropString << " for " << tempObjString << ": ";
 
             if ( tempPropString == "height:" ) {
 
                 assert( fscanf( stream, "%f", &( camera->height ) ) == 1 );
 
-                std::cout << camera->height << std::endl;
+                if ( verbose == true )
+                    std::cout << camera->height << std::endl;
 
             }
             else if ( tempPropString == "width:" ) {
 
                 assert( fscanf( stream, "%f", &( camera->width ) ) == 1 );
 
-                std::cout << camera->width << std::endl;
+                if ( verbose == true )
+                    std::cout << camera->width << std::endl;
 
             }
             else if ( tempPropString == "position:" ) {
@@ -256,9 +261,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                         &( *lights )[ lightsTableIndex ]->position[1],
                         &( *lights )[ lightsTableIndex ]->position[2] );
 
-                    std::cout << ( *lights )[ lightsTableIndex ]->position[0] << " " 
+                    if ( verbose == true ) {
+                        std::cout << ( *lights )[ lightsTableIndex ]->position[0] << " " 
                             << ( *lights )[ lightsTableIndex ]->position[1] << " " 
                             << ( *lights )[ lightsTableIndex ]->position[2] << std::endl;
+                    }
                 }
                 else {
 
@@ -267,9 +274,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                         &( *objects )[ objectsTableIndex ]->position[1],
                         &( *objects )[ objectsTableIndex ]->position[2] );
 
-                    std::cout << ( *objects )[ objectsTableIndex ]->position[0] << " " 
+                    if ( verbose == true ) {
+                        std::cout << ( *objects )[ objectsTableIndex ]->position[0] << " " 
                             << ( *objects )[ objectsTableIndex ]->position[1] << " " 
                             << ( *objects )[ objectsTableIndex ]->position[2] << std::endl;
+                    }
 
                 }
 
@@ -280,7 +289,8 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                 fscanf( stream, "%f", &radius );
                 ( *objects )[ objectsTableIndex ]->setRadius( radius );
 
-                std::cout << radius << std::endl;
+                if ( verbose == true )
+                    std::cout << radius << std::endl;
                 
             }
             else if ( tempPropString == "normal:" ) {
@@ -289,12 +299,13 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                 fscanf( stream, "%f %f %f", &( normal[0] ), &( normal[1] ), &( normal[2] ) );
                 ( *objects )[ objectsTableIndex ]->setNormal( normal );
 
-                
-                float scannedNormal[3];
-                ( *objects )[ objectsTableIndex ]->getNormal( scannedNormal );
-                std::cout << scannedNormal[0] << " " 
+                if ( verbose == true ) {
+                    float scannedNormal[3];
+                    ( *objects )[ objectsTableIndex ]->getNormal( scannedNormal );
+                    std::cout << scannedNormal[0] << " " 
                         << scannedNormal[1] << " " 
                         << scannedNormal[2] << std::endl;
+                }
 
             }
             else if ( tempPropString == "c_diff:" ) {
@@ -304,9 +315,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                     &( *objects )[ objectsTableIndex ]->cDiff[1],
                     &( *objects )[ objectsTableIndex ]->cDiff[2] );
 
-                std::cout << ( *objects )[ objectsTableIndex ]->cDiff[0] << " " 
+                if ( verbose == true ) {
+                    std::cout << ( *objects )[ objectsTableIndex ]->cDiff[0] << " " 
                         << ( *objects )[ objectsTableIndex ]->cDiff[1] << " " 
                         << ( *objects )[ objectsTableIndex ]->cDiff[2] << std::endl;
+                }
 
             }
             else if ( tempPropString == "c_spec:" ) {
@@ -316,9 +329,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                     &( *objects )[ objectsTableIndex ]->cSpec[1],
                     &( *objects )[ objectsTableIndex ]->cSpec[2] );
 
-                std::cout << ( *objects )[ objectsTableIndex ]->cSpec[0] << " " 
+                if ( verbose == true ) {
+                    std::cout << ( *objects )[ objectsTableIndex ]->cSpec[0] << " " 
                         << ( *objects )[ objectsTableIndex ]->cSpec[1] << " " 
                         << ( *objects )[ objectsTableIndex ]->cSpec[2] << std::endl;
+                }
 
             }
             else if ( tempPropString == "color:" ) {
@@ -328,44 +343,51 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                     &( *lights )[ lightsTableIndex ]->color[1],
                     &( *lights )[ lightsTableIndex ]->color[2] );
 
-                std::cout << ( *lights )[ lightsTableIndex ]->color[0] << " " 
+                if ( verbose == true ) {
+                    std::cout << ( *lights )[ lightsTableIndex ]->color[0] << " " 
                         << ( *lights )[ lightsTableIndex ]->color[1] << " " 
                         << ( *lights )[ lightsTableIndex ]->color[2] << std::endl;
+                }
 
             }
             else if ( tempPropString == "radial_a0:" ) {
 
                 fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->radialAtt0 );
 
-                std::cout << ( *lights )[ lightsTableIndex ]->radialAtt0 << std::endl;
+                if ( verbose == true ) 
+                    std::cout << ( *lights )[ lightsTableIndex ]->radialAtt0 << std::endl;
 
             }
             else if ( tempPropString == "radial_a1:" ) {
 
                 fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->radialAtt1 );
 
-                std::cout << ( *lights )[ lightsTableIndex ]->radialAtt1 << std::endl;
+                if ( verbose == true ) 
+                    std::cout << ( *lights )[ lightsTableIndex ]->radialAtt1 << std::endl;
 
             }
             else if ( tempPropString == "radial_a2:" ) {
 
                 fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->radialAtt2 );
 
-                std::cout << ( *lights )[ lightsTableIndex ]->radialAtt1 << std::endl;
+                if ( verbose == true ) 
+                    std::cout << ( *lights )[ lightsTableIndex ]->radialAtt1 << std::endl;
 
             }
             else if ( tempPropString == "theta:" ) {
 
                 fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->theta );
 
-                std::cout << ( *lights )[ lightsTableIndex ]->theta << std::endl;
+                if ( verbose == true ) 
+                    std::cout << ( *lights )[ lightsTableIndex ]->theta << std::endl;
 
             }
             else if ( tempPropString == "angular_a0:" ) {
 
                 fscanf( stream, "%f", &( *lights )[ lightsTableIndex ]->angularAtt0 );
 
-                std::cout << ( *lights )[ lightsTableIndex ]->angularAtt0 << std::endl;
+                if ( verbose == true ) 
+                    std::cout << ( *lights )[ lightsTableIndex ]->angularAtt0 << std::endl;
 
             }
             else if ( tempPropString == "direction:" ) {
@@ -375,9 +397,11 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
                     &( *lights )[ lightsTableIndex ]->direction[1],
                     &( *lights )[ lightsTableIndex ]->direction[2] );
 
-                std::cout << ( *lights )[ lightsTableIndex ]->direction[0] << " " 
+                if ( verbose == true ) {
+                    std::cout << ( *lights )[ lightsTableIndex ]->direction[0] << " " 
                         << ( *lights )[ lightsTableIndex ]->direction[1] << " " 
                         << ( *lights )[ lightsTableIndex ]->direction[2] << std::endl;
+                }
 
             }
 
@@ -389,7 +413,9 @@ int readScene( char *sceneFileName, shape ***objects, camera *camera, int *numbe
             break;
 
         tempObjString = tempObject;
-        std::cout << "\n\nGot object string: " << tempObjString << std::endl;
+
+        if ( verbose == true ) 
+            std::cout << "\n\nGot object string: " << tempObjString << std::endl;
 
         if ( tempObjString == endOfScene )
             break;
@@ -444,6 +470,7 @@ int main(int argc, char *argv[])
                 for ( int imgX=0; imgX<imgWidth; imgX++ ) {
 
                     float rDistX = -0.5f * camera.width + imgX * ( camera.width / imgWidth ) + ( camera.width / imgWidth ) / 2.0f;
+
                     float rVector[3] = { rDistX, rDistY, -1 }; 
                     float R_d[3] = { 0, 0, 0 };
                     v3_normalize( R_d, rVector );
@@ -476,6 +503,60 @@ int main(int argc, char *argv[])
                         outputRGB[0] = objects[ closestObjectIndex ]->cDiff[0] * 255;
                         outputRGB[1] = objects[ closestObjectIndex ]->cDiff[1] * 255;
                         outputRGB[2] = objects[ closestObjectIndex ]->cDiff[2] * 255;
+
+                    }
+
+                    for ( int lightIndex=0; lightIndex<numberOfLights; lightIndex++ ) {
+
+                        if ( closestT == std::numeric_limits<float>::infinity() ) {
+
+                            if ( verbose == true )
+                                std::cout << "No intersecton, in shadow." << std::endl;
+
+                        }
+                        else {
+
+                            if ( verbose == true )
+                                std::cout << "\nCasting ray for intersection " << imgX << ", " << imgY << std::endl;
+
+                            float L_o[3] = { 0, 0, 0 };
+                            L_o[0] = R_o[0] + R_d[0] * closestT;
+                            L_o[1] = R_o[1] + R_d[1] * closestT;
+                            L_o[2] = R_o[2] + R_d[2] * closestT;
+
+                            
+
+                            float fromIntersectionToLight[3] = { 0, 0, 0 };
+                            v3_from_points( fromIntersectionToLight, L_o, lights[ lightIndex ]->position );
+                            float L_d[3] = { 0, 0, 0 };
+                            v3_normalize( L_d, fromIntersectionToLight );
+                            float toLightMagnitude = v3_length( fromIntersectionToLight );
+
+                            if ( verbose == true ) {
+
+                                std::cout << "L_o is: " << L_o[0] << " " << L_o[1] << " " << L_o[2] << std::endl;
+
+                                std::cout << "L_d is: " << L_d[0] << " " << L_d[1] << " " << L_d[2] << std::endl;
+
+                                std::cout << "FromIntersectToLight is: " 
+                                    << fromIntersectionToLight[0] << " " 
+                                    << fromIntersectionToLight[1] << " " 
+                                    << fromIntersectionToLight[2] << std::endl;
+
+                                std::cout << "ToLightMagnitude is: " << toLightMagnitude << std::endl;
+
+                            }
+
+                            for ( int objectIndex=0; objectIndex<numberOfShapes; objectIndex++ ) {
+
+                                float intersectedT = objects[ objectIndex ]->intersect( L_o, R_d );
+
+                                if ( verbose == true )
+                                    std::cout << "Intersected T is: " << intersectedT << std::endl;
+
+                            }
+
+                        }
 
                     }
 

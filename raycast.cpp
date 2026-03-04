@@ -519,10 +519,10 @@ int main(int argc, char *argv[])
                             if ( verbose == true )
                                 std::cout << "\nCasting ray for intersection " << imgX << ", " << imgY << std::endl;
 
-                            float L_o[3] = { 0, 0, 0 };
-                            L_o[0] = R_o[0] + R_d[0] * closestT;
-                            L_o[1] = R_o[1] + R_d[1] * closestT;
-                            L_o[2] = R_o[2] + R_d[2] * closestT;
+                            float L_o[3] = { 0, 0, 0 }; // Increment a tiny amount from the closest T to remove z-fighting
+                            L_o[0] = R_o[0] + R_d[0] * ( closestT );
+                            L_o[1] = R_o[1] + R_d[1] * ( closestT );
+                            L_o[2] = R_o[2] + R_d[2] * ( closestT );
 
                             
 
@@ -532,33 +532,65 @@ int main(int argc, char *argv[])
                             v3_normalize( L_d, fromIntersectionToLight );
                             float toLightMagnitude = v3_length( fromIntersectionToLight );
 
-                            if ( verbose == true ) {
-
-                                std::cout << "L_o is: " << L_o[0] << " " << L_o[1] << " " << L_o[2] << std::endl;
-
-                                std::cout << "L_d is: " << L_d[0] << " " << L_d[1] << " " << L_d[2] << std::endl;
-
-                                std::cout << "FromIntersectToLight is: " 
-                                    << fromIntersectionToLight[0] << " " 
-                                    << fromIntersectionToLight[1] << " " 
-                                    << fromIntersectionToLight[2] << std::endl;
-
-                                std::cout << "ToLightMagnitude is: " << toLightMagnitude << std::endl;
-
-                            }
+                            float intersectedT = std::numeric_limits<float>::infinity();
+                            bool inShadow = false;
 
                             for ( int objectIndex=0; objectIndex<numberOfShapes; objectIndex++ ) {
 
-                                float intersectedT = objects[ objectIndex ]->intersect( L_o, R_d );
+                                if ( objectIndex != closestObjectIndex ) {
 
-                                if ( verbose == true )
-                                    std::cout << "Intersected T is: " << intersectedT << std::endl;
+                                    intersectedT = objects[ objectIndex ]->intersect( L_o, L_d );
+
+                                    if ( verbose == true )
+                                        std::cout << "IntersectedT is " << objects[ objectIndex ]->getShapeType() << " " << intersectedT << std::endl;
+
+                                    if ( intersectedT < toLightMagnitude ) {
+
+                                        inShadow = true;
+                                        break;
+
+                                    }
+
+                                }
+
+                                
 
                             }
+
+                            if ( verbose == true ) {
+
+                                std::cout << "L_o is: " << L_o[0] << " " << L_o[1] << " " << L_o[2] << std::endl;
+                                std::cout << "L_d is: " << L_d[0] << " " << L_d[1] << " " << L_d[2] << std::endl;
+
+                            }
+
+                            if ( inShadow == false ) {
+
+                                if ( verbose == true )
+                                    std::cout << "In light." << std::endl;
+
+                                
+                                
+                            }
+                            else {
+
+                                if ( verbose == true )
+                                    std::cout << "In shadow." << std::endl;
+
+                                // Make shadows black
+                                outputRGB[0] = 0;
+                                outputRGB[1] = 0;
+                                outputRGB[2] = 0;
+
+                            }
+
+                            
 
                         }
 
                     }
+
+                    
 
                     pixmap[ pixmapIndex ] = outputRGB[0];
                     pixmap[ pixmapIndex + 1 ] = outputRGB[1];
